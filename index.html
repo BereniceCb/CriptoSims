@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CriptoSims</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div id="login-container" class="container">
+    <h2>Login / Registro</h2>
+    <input type="text" id="username" placeholder="Usuario" />
+    <input type="password" id="password" placeholder="Contraseña" />
+    <div class="btn-group">
+      <button onclick="register()">Registrar</button>
+      <button onclick="login()">Login</button>
+    </div>
+  </div>
+
+  <div id="main-app" class="container hidden">
+    <h2>Bienvenido a CriptoAhorro</h2>
+    <p id="wallet-address">Conectado: <span></span></p>
+    <button onclick="logout()">Cerrar sesión</button>
+    <button onclick="connectWallet()">Conectar Wallet</button>
+
+    <div class="section">
+      <h3>Conversión de Criptomonedas</h3>
+      <select id="crypto-select">
+        <option value="BTC">Bitcoin (BTC)</option>
+        <option value="ETH">Ethereum (ETH)</option>
+      </select>
+      <input type="number" id="crypto-amount" value="1" />
+      <button onclick="convertToUSD()">Convertir a USD</button>
+      <p id="conversion-result">Equivale a $0.00 USD</p>
+    </div>
+
+    <div class="section">
+      <h3>Invertir en Cripto</h3>
+      <input type="number" id="usd-invest" placeholder="Cantidad en USD" />
+      <button onclick="calculateCrypto()">¿Cuánto cripto obtengo?</button>
+      <p id="investment-result">Obtendrás 0.0000 BTC</p>
+    </div>
+
+    <div class="section">
+      <h3>Gráfico de Valor Histórico</h3>
+      <canvas id="cryptoChart"></canvas>
+    </div>
+
+    <div class="section">
+      <h3>Historial de Conversiones</h3>
+      <ul id="history-log"></ul>
+    </div>
+  </div>
+
+  <script>
+    function register() {
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+      if (!username || !password) return alert("Completa los campos");
+      localStorage.setItem(username, password);
+      alert("Usuario registrado con éxito");
+    }
+
+    function login() {
+      const username = document.getElementById("username").value;
+      const password = document.getElementById("password").value;
+      if (localStorage.getItem(username) === password) {
+        document.getElementById("login-container").classList.add("hidden");
+        document.getElementById("main-app").classList.remove("hidden");
+        updateChart();
+        loadHistory();
+        loadWallet();
+      } else {
+        alert("Credenciales incorrectas");
+      }
+    }
+
+    function logout() {
+      document.getElementById("login-container").classList.remove("hidden");
+      document.getElementById("main-app").classList.add("hidden");
+    }
+
+    async function connectWallet() {
+      if (window.ethereum) {
+        try {
+          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+          const walletAddress = accounts[0];
+          localStorage.setItem("userWallet", walletAddress);
+          const walletEl = document.querySelector("#wallet-address span");
+          if (walletEl) walletEl.textContent = walletAddress;
+          saveHistory(`Conectaste tu wallet real: ${walletAddress}`);
+        } catch (error) {
+          alert("Conexión rechazada: " + error.message);
+        }
+      } else {
+        alert("Trust Wallet no está instalada o no está conectada. Instálala o conéctala para continuar.");
+      }
+    }
+
+    function loadWallet() {
+      const wallet = localStorage.getItem("userWallet") || "No conectada";
+      const walletEl = document.querySelector("#wallet-address span");
+      if (walletEl) walletEl.textContent = wallet;
+    }
+
+    function convertToUSD() {
+      const amount = parseFloat(document.getElementById("crypto-amount").value);
+      const crypto = document.getElementById("crypto-select").value;
+      let price = getSimulatedPrice(crypto);
+      const result = amount * price;
+      document.getElementById("conversion-result").textContent = `Equivale a $${result.toFixed(2)} USD`;
+      saveHistory(`Convertiste ${amount} ${crypto} a $${result.toFixed(2)} USD`);
+    }
+
+    function calculateCrypto() {
+      const usd = parseFloat(document.getElementById("usd-invest").value);
+      const crypto = document.getElementById("crypto-select").value;
+      let price = getSimulatedPrice(crypto);
+      const result = usd / price;
+      document.getElementById("investment-result").textContent = `Obtendrás ${result.toFixed(6)} ${crypto}`;
+      saveHistory(`Invertiste $${usd.toFixed(2)} y obtendrás ${result.toFixed(6)} ${crypto}`);
+    }
+
+    function getSimulatedPrice(crypto) {
+      const basePrices = { BTC: 65000, ETH: 3200 };
+      return basePrices[crypto] + Math.random() * 500 - 250;
+    }
+
+    let chart;
+    function updateChart() {
+      const crypto = document.getElementById("crypto-select").value;
+      const labels = Array.from({ length: 7 }, (_, i) => `Día ${i + 1}`);
+      const data = labels.map(() => getSimulatedPrice(crypto));
+
+      if (chart) chart.destroy();
+
+      const ctx = document.getElementById("cryptoChart").getContext("2d");
+      chart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: `Historial de precio de ${crypto}`,
+              data: data,
+              fill: false,
+              borderColor: "#00cec9",
+              tension: 0.3
+            }
+          ]
+        },
+        options: {
+          scales: {
+            y: {
+              beginAtZero: false
+            }
+          }
+        }
+      });
+    }
+
+    function saveHistory(entry) {
+      let history = JSON.parse(localStorage.getItem("conversionHistory")) || [];
+      const now = new Date().toLocaleString();
+      history.unshift(`[${now}] ${entry}`);
+      if (history.length > 10) history.pop();
+      localStorage.setItem("conversionHistory", JSON.stringify(history));
+      loadHistory();
+    }
+
+    function loadHistory() {
+      let history = JSON.parse(localStorage.getItem("conversionHistory")) || [];
+      const container = document.getElementById("history-log");
+      if (!container) return;
+      container.innerHTML = history.map(item => `<li>${item}</li>`).join("");
+    }
+  </script>
+</body>
+</html>
