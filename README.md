@@ -21,6 +21,11 @@ Este es un proyecto web que simula la conversión de criptomonedas a USD, la vis
 
 ### Clonar el repositorio:
 
+https://github.com/BereniceCb/CriptoSims.git
+
+[Mira el video tutorial aquí](https://github.com/tu-usuario/tu-repositorio/blob/main/video-tutorial.mp4)
+
+
 1. Abre una terminal y navega al directorio donde deseas clonar el repositorio.
 2. Ejecuta el siguiente comando para clonar el repositorio:
 
